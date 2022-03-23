@@ -1,0 +1,13 @@
+{
+    "python.formatting.autopep8Args": [
+        "--ignore=E501",
+        "--max-line-length=150"
+    ],
+    "python.linting.flake8Args": [
+        "  \"python.linting.flake8Args\": [     \"--max-line-length=150\",     \"--ignore=E402,F841,F401,E302,E305\",   ]"
+    ],
+    "python.linting.pycodestyleArgs": [
+        "--ignore=E501",
+        "--max-line-length=150"
+    ]
+}
