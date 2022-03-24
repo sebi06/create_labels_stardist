@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 #################################################################
-# File        : create_labels_using_stardist.pycondalist
-# Version     : 0.0.2
+# File        : create_labels_using_stardist.py
+# Version     : 0.0.3
 # Author      : sebi06
 # Date        : 23.03.2021
 #
@@ -193,7 +193,7 @@ stardist_norm = True
 stardist_norm_pmin = 1
 stardist_norm_pmax = 99.8
 stardist_norm_clip = False
-n_tiles = None #(4, 4)
+n_tiles = None  # (4, 4)
 
 # erode labels
 do_erode = True
