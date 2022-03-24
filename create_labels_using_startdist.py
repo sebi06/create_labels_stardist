@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 #################################################################
-# File        : create_labels_using_stardist.py
-# Version     : 0.0.1
+# File        : create_labels_using_stardist.pycondalist
+# Version     : 0.0.2
 # Author      : sebi06
 # Date        : 23.03.2021
 #
@@ -12,7 +12,6 @@
 #
 #################################################################
 
-import silence_tensorflow.auto  # do not use inside a docker etc.
 from stardist.models import StarDist2D
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,7 +37,9 @@ def process_labels(labels: np.ndarray,
                    do_area_filter: bool = True,
                    minsize: int = 200,
                    maxsize: int = 1000000,
-                   do_clear_borders: bool = True,
+                   do_erode: bool = False,
+                   erode_numit: int = 1,
+                   do_clear_borders: bool = False,
                    verbose: bool = False) -> Tuple[np.ndarray, np.ndarray]:
 
     # find boundaries
@@ -56,6 +57,10 @@ def process_labels(labels: np.ndarray,
                                                  area_min=minsize,
                                                  area_max=maxsize)
         print("Area Filter - Objects:", num_labels)
+
+    if do_erode:
+        print("Erode labels Iteration:", erode_numit)
+        new_labels = sgt.erode_labels(labels, erode_numit, relabel=True)
 
     if do_clear_borders:
         # clear border objects
@@ -157,6 +162,7 @@ def save_OMETIFF(img_FL: np.ndarray,
 ##########################################################################
 
 basefolder = r"data"
+#basefolder = r"D:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_20XNA095_stitched"
 dir_FL = os.path.join(basefolder, "fluo")
 dir_LABEL = os.path.join(basefolder, "label")
 dir_TL = os.path.join(basefolder, "trans")
@@ -173,8 +179,8 @@ suffix_BGRD = "_background.ome.tiff"
 use_tiles = False
 target_scaleXY = 0.5
 rescale_image = False
-tilesize_processing = 400
-min_borderwith_processing = 100
+tilesize_processing = 2000
+min_borderwith_processing = 200
 
 # get the desired StarDist2D model fur instance segmentation of cell nuclei
 model = StarDist2D(None, name="2D_versatile_fluo", basedir="stardist_models")
@@ -187,11 +193,15 @@ stardist_norm = True
 stardist_norm_pmin = 1
 stardist_norm_pmax = 99.8
 stardist_norm_clip = False
-n_tiles = None
+n_tiles = None #(4, 4)
+
+# erode labels
+do_erode = True
+erode_numit = 3
 
 # process the labels afterwards
 do_area_filter = True
-minsize_nuc = 200
+minsize_nuc = 100
 maxsize_nuc = 5000
 do_clear_borders = False
 
@@ -287,6 +297,8 @@ for file in os.listdir(basefolder):
                                                         do_area_filter=True,
                                                         minsize=minsize_nuc,
                                                         maxsize=maxsize_nuc,
+                                                        do_erode=do_erode,
+                                                        erode_numit=erode_numit,
                                                         do_clear_borders=False,
                                                         verbose=verbose)
 
@@ -308,7 +320,7 @@ for file in os.listdir(basefolder):
                                  savepath_BGRD=savepath_BGRD,
                                  pixels_physical_sizes=pixels_physical_sizes)
 
-                    print("Saved images & labels for:", cziname_NUC)
+                    print("Saved images & labels for:", cziname_NUC, "tile:", tilecounter)
 
                     tilecounter += 1
 
@@ -354,6 +366,8 @@ for file in os.listdir(basefolder):
                                                     do_area_filter=True,
                                                     minsize=minsize_nuc,
                                                     maxsize=maxsize_nuc,
+                                                    do_erode=do_erode,
+                                                    erode_numit=erode_numit,
                                                     do_clear_borders=True,
                                                     verbose=verbose)
 
