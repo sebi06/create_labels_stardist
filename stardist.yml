@@ -1,0 +1,31 @@
+name: stardist
+channels:
+  - defaults
+  - nvidia
+dependencies:
+  - python=3.8
+  - cudatoolkit=11.0.*
+  - cudnn=8.0.*
+  - jupyter
+  - xmltodict
+  - matplotlib
+  - scikit-image
+  - nb_conda_kernels
+  - napari
+  - pip
+  - pip:
+    - tensorflow==2.4.*
+    - csbdeep
+    - stardist
+    - aicspylibczi
+    - aicsimageio[all]
+    - silence-tensorflow
+    - apeer-ometiff-library
+    - apeer-dev-kit
+
+# conda env create -f stardist.yml
+# conda env update --name stardist --file stardist.yml --prune
+
+# verfify CUDA
+# nvcc --version
+# nvidia-smi

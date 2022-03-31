@@ -234,7 +234,7 @@ for file in os.listdir(basefolder):
         scale_forward = target_scaleXY / cziscale.X
         new_shapeXY = int(np.round(tilesize_processing * scale_forward, 0))
 
-        # open a CZI instance to read and in parallel one to write
+        # open a CZI instance to read
         with pyczi.open_czi(os.path.join(basefolder, file)) as czidoc_r:
 
             if use_tiles:
