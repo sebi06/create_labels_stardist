@@ -158,9 +158,9 @@ def save_OMETIFF(img_FL: np.ndarray,
 
 ##########################################################################
 
-#basefolder = r"data"
+basefolder = r"data"
 #basefolder = r"D:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_20XNA095_stitched"
-basefolder = r"d:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_CD7_20XNA0.7\single"
+#basefolder = r"d:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_CD7_20XNA0.7\single"
 dir_FL = os.path.join(basefolder, "fluo")
 dir_LABEL = os.path.join(basefolder, "label")
 dir_TL = os.path.join(basefolder, "trans")
@@ -375,10 +375,10 @@ for file in os.listdir(basefolder):
                 print("Saving images & labels for:", cziname_NUC)
 
                 # save the original FL channel as OME-TIFF
-                savepath_FL = os.path.join(dir_FL, cziname_NUC[:-4] + suffix_orig)
+                savepath_FL = os.path.join(dir_FL, cziname_NUC + suffix_orig)
 
                 # save the original TL (PGC etc. ) channel as OME_TIFF
-                savepath_TL = os.path.join(dir_TL, cziname_TL[:-4] + suffix_orig)
+                savepath_TL = os.path.join(dir_TL, cziname_TL + suffix_orig)
 
                 # save the labels for the nucleus and the background as OME-TIFF
                 savepath_BGRD = os.path.join(dir_LABEL, cziname_TL + suffix_BGRD)
