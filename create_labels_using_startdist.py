@@ -160,7 +160,7 @@ def save_OMETIFF(img_FL: np.ndarray,
 
 #basefolder = r"data"
 #basefolder = r"D:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_20XNA095_stitched"
-basefolder = r"d:\Testdata_Zeiss\Labeld_Datasets\DAPI_PGC_CD7_20XNA0.7\single"
+basefolder = r"d:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_CD7_20XNA0.7\single"
 dir_FL = os.path.join(basefolder, "fluo")
 dir_LABEL = os.path.join(basefolder, "label")
 dir_TL = os.path.join(basefolder, "trans")
@@ -199,7 +199,7 @@ erode_numit = 3
 
 # process the labels afterwards
 do_area_filter = True
-minsize_nuc = 100
+minsize_nuc = 20
 maxsize_nuc = 5000
 do_clear_borders = False
 
@@ -213,7 +213,7 @@ ch_id_FL = 0  # channel index for the stained cell nuclei
 ch_id_TL = 1  # channelindex for the PGC or TL or ...
 
 # for testing - show some plots
-verbose = True
+verbose = False
 
 # iterating over all files
 for file in os.listdir(basefolder):
@@ -292,12 +292,12 @@ for file in os.listdir(basefolder):
                     # process the labels
                     labels, background = process_labels(labels,
                                                         seg_labeltype=seg_labeltype,
-                                                        do_area_filter=True,
+                                                        do_area_filter=do_area_filter,
                                                         minsize=minsize_nuc,
                                                         maxsize=maxsize_nuc,
                                                         do_erode=do_erode,
                                                         erode_numit=erode_numit,
-                                                        do_clear_borders=False,
+                                                        do_clear_borders=do_clear_borders,
                                                         verbose=verbose)
 
                     # save the original FL channel as OME-TIFF
@@ -364,13 +364,15 @@ for file in os.listdir(basefolder):
                 # process the labels
                 labels, background = process_labels(labels,
                                                     seg_labeltype=seg_labeltype,
-                                                    do_area_filter=True,
+                                                    do_area_filter=do_area_filter,
                                                     minsize=minsize_nuc,
                                                     maxsize=maxsize_nuc,
                                                     do_erode=do_erode,
                                                     erode_numit=erode_numit,
-                                                    do_clear_borders=True,
+                                                    do_clear_borders=do_clear_borders,
                                                     verbose=verbose)
+
+                print("Saving images & labels for:", cziname_NUC)
 
                 # save the original FL channel as OME-TIFF
                 savepath_FL = os.path.join(dir_FL, cziname_NUC[:-4] + suffix_orig)
@@ -390,7 +392,7 @@ for file in os.listdir(basefolder):
                              savepath_BGRD=savepath_BGRD,
                              pixels_physical_sizes=pixels_physical_sizes)
 
-                print("Saved images & labels for:", cziname_NUC)
+                print("Saving finished for:", cziname_NUC)
 
     else:
         continue
