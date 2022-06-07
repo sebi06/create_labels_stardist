@@ -2,21 +2,16 @@
 
 #################################################################
 # File        : pylibczirw_tools.py
-# Version     : 0.0.9
 # Author      : sebi06
-# Date        : 02.02.2022
 #
 # Disclaimer: This code is purely experimental. Feel free to
 # use it at your own risk.
 #
 #################################################################
 
-from __future__ import annotations
-
-import pylibCZIrw.czi
 from pylibCZIrw import czi as pyczi
-from czimetadata_tools import pylibczirw_metadata as czimd
-from czimetadata_tools import misc
+import pylibczirw_metadata as czimd
+import misc
 import numpy as np
 from typing import List, Dict, Tuple, Optional, Type, Any, Union
 from tqdm.contrib.itertools import product
@@ -51,7 +46,8 @@ def read_mdarray(filename: str,
 
         # define the dimension order to be STZCYXA
         dimstring = "STZCYXA"
-        array_md = np.empty([size_s, size_t, size_z, size_c, size_y, size_x, 3 if mdata.isRGB else 1], dtype=mdata.npdtype)
+        array_md = np.empty([size_s, size_t, size_z, size_c, size_y,
+                            size_x, 3 if mdata.isRGB else 1], dtype=mdata.npdtype)
 
         # read array for the scene
         for s, t, z, c in product(range(size_s),
@@ -73,7 +69,7 @@ def read_mdarray(filename: str,
             array_md[s, t, z, c, ...] = image2d
 
         if remove_Adim:
-            dimstring.replace("A", "")
+            dimstring = dimstring.replace("A", "")
             array_md = np.squeeze(array_md, axis=-1)
 
     return array_md, dimstring
@@ -102,7 +98,8 @@ def read_mdarray_lazy(filename: str, remove_Adim: bool = True) -> Tuple[da.Array
                 if mdata.image.SizeS is None:
                     image2d = czidoc.read()
                 else:
-                    image2d = czidoc.read(plane={'T': t, 'Z': z, 'C': c}, scene=s)
+                    image2d = czidoc.read(
+                        plane={'T': t, 'Z': z, 'C': c}, scene=s)
 
                 # check if the image2d is really not too big
                 if mdata.pyczi_dims["X"][1] > mdata.image.SizeX or mdata.pyczi_dims["Y"][1] > mdata.image.SizeY:
@@ -144,14 +141,19 @@ def read_mdarray_lazy(filename: str, remove_Adim: bool = True) -> Tuple[da.Array
 
     # create dask stack of lazy image readers
     lazy_process_image = dask.delayed(read_5d)  # lazy reader
-    lazy_arrays = [lazy_process_image(filename, sizes, s, mdata, remove_Adim) for s in range(sizeS)]
+    lazy_arrays = [lazy_process_image(
+        filename, sizes, s, mdata, remove_Adim) for s in range(sizeS)]
 
-    dask_arrays = [da.from_delayed(lazy_array, shape=sp, dtype=mdata.npdtype) for lazy_array in lazy_arrays]
+    dask_arrays = [da.from_delayed(
+        lazy_array, shape=sp, dtype=mdata.npdtype) for lazy_array in lazy_arrays]
 
     # Stack into one large dask.array
     array_md = da.stack(dask_arrays, axis=0)
 
+    # define the dimension order to be STZCYXA
+    dimstring = "STZCYXA"
+
     if remove_Adim:
-        dimstring = "STZCYX"
+        dimstring = dimstring.replace("A", "")
 
     return array_md, dimstring

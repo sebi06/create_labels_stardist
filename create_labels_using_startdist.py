@@ -2,10 +2,7 @@
 
 #################################################################
 # File        : create_labels_using_stardist.py
-# Version     : 0.0.3
 # Author      : sebi06
-# Date        : 23.03.2021
-#
 #
 # Disclaimer: This code is purely experimental. Feel free to
 # use it at your own risk.
@@ -161,8 +158,9 @@ def save_OMETIFF(img_FL: np.ndarray,
 
 ##########################################################################
 
-basefolder = r"data"
+#basefolder = r"data"
 #basefolder = r"D:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_20XNA095_stitched"
+basefolder = r"d:\Testdata_Zeiss\Labeld_Datasets\DAPI_PGC_CD7_20XNA0.7\single"
 dir_FL = os.path.join(basefolder, "fluo")
 dir_LABEL = os.path.join(basefolder, "label")
 dir_TL = os.path.join(basefolder, "trans")
