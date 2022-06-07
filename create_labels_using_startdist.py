@@ -194,8 +194,7 @@ stardist_norm_clip = False
 n_tiles = None  # (4, 4)
 
 # erode labels
-process_labels = False
-do_erode = True
+do_erode = False
 erode_numit = 3
 
 # process the labels afterwards
@@ -362,33 +361,16 @@ for file in os.listdir(basefolder):
                                                            
                     print("StarDist - OBjects:", labels.max())
                 
-                if process_labels:
-                
-                    # process the labels
-                    labels, background = process_labels(labels,
-                                                        seg_labeltype=seg_labeltype,
-                                                        do_area_filter=True,
-                                                        minsize=minsize_nuc,
-                                                        maxsize=maxsize_nuc,
-                                                        do_erode=do_erode,
-                                                        erode_numit=erode_numit,
-                                                        do_clear_borders=True,
-                                                        verbose=verbose)
-                                                        
-                # find boundaries
-                bound = segmentation.find_boundaries(labels, connectivity=2, mode="thicker", background=0)
-
-                # set all boundary pixel inside label image = Zero by inverting the boundary image
-                labels = labels * ~bound
-
-
-                if do_area_filter:
-                    # filter labels by size
-                    labels, num_labels = sgt.area_filter(labels,
-                                                         area_min=minsize_nuc,
-                                                         area_max=maxsize_nuc)
-
-                    print("Area Filter - Objects:", num_labels)
+                # process the labels
+                labels, background = process_labels(labels,
+                                                    seg_labeltype=seg_labeltype,
+                                                    do_area_filter=True,
+                                                    minsize=minsize_nuc,
+                                                    maxsize=maxsize_nuc,
+                                                    do_erode=do_erode,
+                                                    erode_numit=erode_numit,
+                                                    do_clear_borders=True,
+                                                    verbose=verbose)
 
                 # save the original FL channel as OME-TIFF
                 savepath_FL = os.path.join(dir_FL, cziname_NUC[:-4] + suffix_orig)
