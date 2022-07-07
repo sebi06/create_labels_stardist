@@ -9,12 +9,14 @@
 #
 #################################################################
 
+from pylibCZIrw import czi as pyczi
+from czitools import metadata as czimd
+from czitools import utils
 from stardist.models import StarDist2D
 import matplotlib.pyplot as plt
 import numpy as np
 from skimage import measure, segmentation
 from skimage.transform import resize
-from pylibCZIrw import czi as pyczi
 from aicsimageio.writers import ome_tiff_writer as otw
 import os
 from tqdm import tqdm
@@ -22,11 +24,6 @@ from typing import List, Dict, Tuple, Optional, Type, Any, Union
 from cztile.fixed_total_area_strategy import AlmostEqualBorderFixedTotalAreaStrategy2D
 import segmentation_tools as sgt
 import segmentation_stardist as sg_sd
-
-try:
-    from czimetadata_tools import pylibczirw_metadata as czimd
-except ImportError as e:
-    import pylibczirw_metadata as czimd
 
 
 def process_labels(labels: np.ndarray,
@@ -358,9 +355,9 @@ for file in os.listdir(basefolder):
                                                            norm_pmin=stardist_norm_pmin,
                                                            norm_pmax=stardist_norm_pmax,
                                                            norm_clip=stardist_norm_clip)
-                                                           
+
                     print("StarDist - OBjects:", labels.max())
-                
+
                 # process the labels
                 labels, background = process_labels(labels,
                                                     seg_labeltype=seg_labeltype,
