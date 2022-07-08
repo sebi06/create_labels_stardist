@@ -22,6 +22,9 @@ dependencies:
     - silence-tensorflow
     - apeer-ometiff-library
     - apeer-dev-kit
+    - pylibczirw
+    - cztile
+    - czitools
 
 # conda env create -f stardist.yml
 # conda env update --name stardist --file stardist.yml --prune
