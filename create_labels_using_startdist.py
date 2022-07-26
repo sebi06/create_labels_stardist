@@ -10,8 +10,10 @@
 #################################################################
 
 from pylibCZIrw import czi as pyczi
-from czitools import metadata as czimd
-from czitools import utils
+from czitools import pylibczirw_metadata as czimd
+from czitools import pylibczirw_tools
+from czitools import napari_tools
+from czitools import misc
 from stardist.models import StarDist2D
 import matplotlib.pyplot as plt
 import numpy as np
@@ -207,10 +209,10 @@ seg_labeltype = "semantic"
 # CZI parameters
 ext = ".czi"
 ch_id_FL = 0  # channel index for the stained cell nuclei
-ch_id_TL = 1  # channelindex for the PGC or TL or ...
+ch_id_TL = 1  # channel index for the PGC or TL or ...
 
 # for testing - show some plots
-verbose = False
+verbose = True
 
 # iterating over all files
 for file in os.listdir(basefolder):
