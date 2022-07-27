@@ -1,0 +1,49 @@
+DATA:
+  # CZI parameters
+  EXT: .czi
+  # index for the fluorescene and the target channel, e.g. PGC
+  CH_ID_FL: 0  # channel index for the stained cell nuclei
+  CH_ID_TL: 1  # channelindex for the PGC or TL or ...
+
+# define StarDist model
+SD_MODEL:
+  NAME: 2D_versatile_fluo
+  BASEDIR: stardist_models
+
+# StarDist-specific processing
+SD_PROCESSING:
+  USE_TILES: False
+  TILESIZE: 2000
+  TARGET_SCALE: 0.5
+  RESCALE_IMAGE: False
+  MIN_BORDERWIDTH: 200
+
+# parameters for the StarDist model
+SD_PARAMS:
+  STARDIST_PROB_THRESH: 0.5
+  STARDIST_OVERLAP_THRESH: 0.3 
+  STARDIST_OVERLAP_LABEL: # will be interpreted as None, 0 IS NOT SUPPORTED YET
+  STARDIST_NORM: True
+  STARDIST_NORM_PMIN: 1
+  STARDIST_NORM_PMAX: 99.8
+  STARDIST_NORM_CLIP: False
+  N_TILES: null # will be interpreted as None
+
+#parameters for post-processing the labels
+POST_PROCESSING:
+  # erode labels
+  DO_ERODE: False
+  ERODE_NUMIT: 1
+
+  # process the labels afterwards, sizes in [pixels]
+  DO_AREA_FILTER: True
+  MINSIZE_NUC: 500
+  MAXSIZE_NUC: 10000
+  DO_CLEAR_BORDERS: False
+
+  # define desired label output type
+  SEG_LABELTYPE: semantic
+
+TEST:
+  # for testing - show some plots
+  VERBOSE: False
