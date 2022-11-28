@@ -3,32 +3,60 @@ channels:
   - defaults
   - nvidia
 dependencies:
-  - python=3.8
-  - cudatoolkit=11.0.*
-  - cudnn=8.0.*
+  - python=3.9
+  - pip
+  - cudatoolkit=11
+  - cudnn
   - jupyter
   - xmltodict
-  - matplotlib
-  - scikit-image
   - nb_conda_kernels
-  - napari
-  - pip
+  - docutils
+  - wheel
+  - setuptools
+  - autopep8
+  - nb_conda_kernels
+  - pytest
   - pip:
-    - tensorflow-gpu==2.4.*
+    - tensorflow
     - csbdeep
     - stardist
-    - aicspylibczi
-    - aicsimageio[all]
     - silence-tensorflow
-    - apeer-ometiff-library
-    - apeer-dev-kit
-    - pylibczirw
-    - cztile
+    - scikit-image
+    - pylibCZIrw
     - czitools
+    - apeer-dev-kit
+    - apeer-ometiff-library
+    - aicsimageio[all]
+    - aicspylibczi
+    - napari[all]
+    - napari-aicsimageio
+    - napari-brightness-contrast
+    - napari-layer-details-display
+    - napari-skimage-regionprops
+    - napari-simpleitk-image-processing
+    - napari-plugin-search
+    - napari-ome-zarr
+    - napari-plugin-search
+    - magicgui
+    - magic-class
+    - matplotlib
+    - tqdm
+    - pooch
+    - requests
+    - ipytree
 
-# conda env create -f stardist.yml
-# conda env update --name stardist --file stardist.yml --prune
+# mamba env create -f stardist.yml
+# mamba env update --name stardist --file stardist.yml --prune
 
 # verfify CUDA
 # nvcc --version
 # nvidia-smi
+
+# Remove an environment
+# mamba remove --name stardist --all
+# mamba clean --all
+
+# Show the locations of all versions of Python that are currently in the path
+# Windows: where python
+# Linux which -a python
+
