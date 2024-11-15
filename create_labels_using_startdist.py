@@ -37,7 +37,22 @@ def process_labels(
     do_clear_borders: bool = False,
     verbose: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Process label images by applying various operations such as boundary finding, area filtering, erosion, and border clearing.
 
+    Parameters:
+        labels (np.ndarray): Input label image.
+        seg_labeltype (str): Type of segmentation label to produce. Options are "semantic" or "instance". Default is "semantic".
+        do_area_filter (bool): Whether to filter labels by size. Default is True.
+        minsize (int): Minimum size of labels to keep when area filtering. Default is 200.
+        maxsize (int): Maximum size of labels to keep when area filtering. Default is 1000000.
+        do_erode (bool): Whether to erode labels. Default is False.
+        erode_numit (int): Number of iterations for erosion if do_erode is True. Default is 1.
+        do_clear_borders (bool): Whether to clear objects touching the border. Default is False.
+        verbose (bool): Whether to display intermediate plots for debugging. Default is False.
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: Processed label image and corresponding background image.
+    """
     # find boundaries
     bounds = segmentation.find_boundaries(
         labels, connectivity=2, mode="thicker", background=0
