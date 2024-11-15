@@ -1,0 +1,48 @@
+name: stardist_gpu
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - cudatoolkit=11.2
+  - cudnn=8.1.0
+  - xmltodict
+  - docutils
+  - wheel
+  - setuptools
+  - autopep8
+  - pytest
+  - seaborn
+  - matplotlib
+  - pip:
+    - tensorflow==2.10
+    - csbdeep
+    - stardist
+    - silence-tensorflow
+    - scikit-image
+    - pylibCZIrw
+    - czitools
+    - czitile
+    - apeer-dev-kit
+    - apeer-ometiff-library
+    - aicsimageio==4.14.0
+    - aicspylibczi
+    - MightyMosaic
+
+
+# mamba env create -f stardist_gpu.yml
+# mamba env update --name stardist --file stardist_gpu.yml --prune
+
+# verfify CUDA
+# nvcc --version
+# nvidia-smi
+
+# Remove an environment
+# mamba remove --name stardist_gpu --all
+# mamba clean --all
+
+# Show the locations of all versions of Python that are currently in the path
+# Windows: where python
+# Linux which -a python
+

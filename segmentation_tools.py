@@ -2,9 +2,7 @@
 
 #################################################################
 # File        : segmentation_tools.py
-# Version     : 0.6
 # Author      : sebi06
-# Date        : 04.12.2021
 #
 # Disclaimer: This code is purely experimental. Feel free to
 # use it at your own risk.
@@ -27,7 +25,16 @@ from aicsimageio import AICSImage, imread
 from skimage import io, measure, segmentation
 from skimage import exposure
 from skimage.exposure import rescale_intensity
-from skimage.morphology import white_tophat, black_tophat, disk, square, ball, closing, square, dilation
+from skimage.morphology import (
+    white_tophat,
+    black_tophat,
+    disk,
+    square,
+    ball,
+    closing,
+    square,
+    dilation,
+)
 from skimage.morphology import remove_small_objects, remove_small_holes
 from skimage.feature import peak_local_max
 from skimage.measure import label, regionprops
@@ -48,36 +55,38 @@ from typing import List, Dict, NamedTuple, Tuple, Optional, Type, Any, Union
 #    print(error.__class__.__name__ + ": " + error.msg)
 #    print('mxnet will not be used.')
 
+# try:
+#     print('Trying to find cellpose library ...')
+#     from cellpose import plot, transforms
+#     from cellpose import models, utils
+# except (ImportError, ModuleNotFoundError) as error:
+#     # Output expected ImportErrors.
+#     print(error.__class__.__name__ + ": " + error.msg)
+#     print('CellPose cannot be used.')
+
 try:
-    print('Trying to find cellpose library ...')
-    from cellpose import plot, transforms
-    from cellpose import models, utils
+    print("Trying to find tensorflow library ...")
+    # silence tensorflow output
+    from silence_tensorflow import silence_tensorflow
+
+    silence_tensorflow()
+    import tensorflow as tf
+
+    logging.getLogger("tensorflow").setLevel(logging.ERROR)
+    print("TensorFlow Version : ", tf.version.GIT_VERSION, tf.__version__)
 except (ImportError, ModuleNotFoundError) as error:
     # Output expected ImportErrors.
     print(error.__class__.__name__ + ": " + error.msg)
-    print('CellPose cannot be used.')
+    print("TensorFlow will not be used.")
 
-# try:
-#     print('Trying to find tensorflow library ...')
-#     # silence tensorflow output
-#     from silence_tensorflow import silence_tensorflow
-#     silence_tensorflow()
-#     import tensorflow as tf
-#     logging.getLogger("tensorflow").setLevel(logging.ERROR)
-#     print('TensorFlow Version : ', tf.version.GIT_VERSION, tf.__version__)
-# except (ImportError, ModuleNotFoundError) as error:
-#     # Output expected ImportErrors.
-#     print(error.__class__.__name__ + ": " + error.msg)
-#     print('TensorFlow will not be used.')
-
-# try:
-#     print('Trying to find stardist library ...')
-#     from stardist.models import StarDist2D
-#     from csbdeep.utils import Path, normalize
-# except (ImportError, ModuleNotFoundError) as error:
-#     # Output expected ImportErrors.
-#     print(error.__class__.__name__ + ": " + error.msg)
-#     print('StarDist will not be used.')
+try:
+    print("Trying to find stardist library ...")
+    from stardist.models import StarDist2D
+    from csbdeep.utils import Path, normalize
+except (ImportError, ModuleNotFoundError) as error:
+    # Output expected ImportErrors.
+    print(error.__class__.__name__ + ": " + error.msg)
+    print("StarDist will not be used.")
 
 
 def apply_watershed(binary, min_distance=10):
@@ -101,34 +110,37 @@ def apply_watershed(binary, min_distance=10):
     #                            labels=binary)
 
     # create the seeds
-    peak_idx = peak_local_max(distance,
-                              labels=binary,
-                              min_distance=min_distance,
-                              # indices=False
-                              )
+    peak_idx = peak_local_max(
+        distance,
+        labels=binary,
+        min_distance=min_distance,
+        # indices=False
+    )
 
     # create peak mask
     peak_mask = np.zeros_like(distance, dtype=bool)
     peak_mask[tuple(peak_idx.T)] = True
 
     # label maxima
-    #markers, num_features = ndimage.label(local_maxi)
+    # markers, num_features = ndimage.label(local_maxi)
     markers, num_features = ndimage.label(peak_mask)
 
     # apply watershed
-    mask = watershed(-distance, markers,
-                     mask=binary,
-                     watershed_line=True).astype(np.int)
+    mask = watershed(-distance, markers, mask=binary, watershed_line=True).astype(
+        np.int
+    )
 
     return mask
 
 
-def apply_watershed_adv(image2d,
-                        segmented,
-                        filtermethod_ws='median',
-                        filtersize_ws=3,
-                        min_distance=2,
-                        radius=1):
+def apply_watershed_adv(
+    image2d,
+    segmented,
+    filtermethod_ws="median",
+    filtersize_ws=3,
+    min_distance=2,
+    radius=1,
+):
     """Apply advanced watershed to a binary image
 
     :param image2d: 2D image with pixel intensities
@@ -151,20 +163,21 @@ def apply_watershed_adv(image2d,
     image2d = image2d.astype(np.float)
 
     # rescale 0-1
-    image2d = rescale_intensity(image2d, in_range='image', out_range=(0, 1))
+    image2d = rescale_intensity(image2d, in_range="image", out_range=(0, 1))
 
     # filter image
-    if filtermethod_ws == 'median':
+    if filtermethod_ws == "median":
         image2d = median(image2d, selem=disk(filtersize_ws))
-    if filtermethod_ws == 'gauss':
-        image2d = gaussian(image2d, sigma=filtersize_ws, mode='reflect')
+    if filtermethod_ws == "gauss":
+        image2d = gaussian(image2d, sigma=filtersize_ws, mode="reflect")
 
     # create the seeds
-    peak_idx = peak_local_max(image2d,
-                              labels=label(segmented),
-                              min_distance=min_distance,
-                              # indices=False
-                              )
+    peak_idx = peak_local_max(
+        image2d,
+        labels=label(segmented),
+        min_distance=min_distance,
+        # indices=False
+    )
 
     # create peak mask
     peak_mask = np.zeros_like(image2d, dtype=bool)
@@ -177,23 +190,24 @@ def apply_watershed_adv(image2d,
     watershed_map = -1 * distance_transform_edt(segmented)
 
     # create mask
-    mask = watershed(watershed_map,
-                     markers=label(seed),
-                     mask=segmented,
-                     watershed_line=True).astype(np.int)
+    mask = watershed(
+        watershed_map, markers=label(seed), mask=segmented, watershed_line=True
+    ).astype(np.int)
 
     return mask
 
 
-def segment_threshold(image2d,
-                      filtermethod='median',
-                      filtersize=3,
-                      threshold='triangle',
-                      split_ws=True,
-                      min_distance=30,
-                      ws_method='ws_adv',
-                      radius=1,
-                      dtypemask=np.int16):
+def segment_threshold(
+    image2d,
+    filtermethod="median",
+    filtersize=3,
+    threshold="triangle",
+    split_ws=True,
+    min_distance=30,
+    ws_method="ws_adv",
+    radius=1,
+    dtypemask=np.int16,
+):
     """Segment an image using the following steps:
     - filter image
     - threshold image
@@ -224,10 +238,10 @@ def segment_threshold(image2d,
     # filter image
     if filtermethod is None:
         image2d_filtered = image2d
-    if filtermethod == 'median':
+    if filtermethod == "median":
         image2d_filtered = median(image2d, selem=disk(filtersize))
-    if filtermethod == 'gauss':
-        image2d_filtered = gaussian(image2d, sigma=filtersize, mode='reflect')
+    if filtermethod == "gauss":
+        image2d_filtered = gaussian(image2d, sigma=filtersize, mode="reflect")
 
     # threshold image and run marker-based watershed
     binary = autoThresholding(image2d_filtered, method=threshold)
@@ -235,14 +249,13 @@ def segment_threshold(image2d,
     # apply watershed
     if split_ws:
 
-        if ws_method == 'ws':
-            mask = apply_watershed(binary,
-                                   min_distance=min_distance)
+        if ws_method == "ws":
+            mask = apply_watershed(binary, min_distance=min_distance)
 
-        if ws_method == 'ws_adv':
-            mask = apply_watershed_adv(image2d, binary,
-                                       min_distance=min_distance,
-                                       radius=radius)
+        if ws_method == "ws_adv":
+            mask = apply_watershed_adv(
+                image2d, binary, min_distance=min_distance, radius=radius
+            )
 
     if not split_ws:
         # label the objects
@@ -252,10 +265,7 @@ def segment_threshold(image2d,
     return mask.astype(dtypemask)
 
 
-def autoThresholding(image2d,
-                     method='triangle',
-                     radius=10,
-                     value=50):
+def autoThresholding(image2d, method="triangle", radius=10, value=50):
     """Autothreshold an 2D intensity image which is calculated using:
     binary = image2d >= thresh
 
@@ -272,17 +282,17 @@ def autoThresholding(image2d,
     """
 
     # calculate global Otsu threshold
-    if method == 'global_otsu':
+    if method == "global_otsu":
         thresh = threshold_otsu(image2d)
 
     # calculate local Otsu threshold
-    if method == 'local_otsu':
+    if method == "local_otsu":
         thresh = rank.otsu(image2d, disk(radius))
 
-    if method == 'value_based':
+    if method == "value_based":
         thresh = value
 
-    if method == 'triangle':
+    if method == "triangle":
         thresh = threshold_triangle(image2d)
 
     binary = image2d >= thresh
@@ -290,11 +300,7 @@ def autoThresholding(image2d,
     return binary
 
 
-def cutout_subimage(image2d,
-                    startx=0,
-                    starty=0,
-                    width=100,
-                    height=200):
+def cutout_subimage(image2d, startx=0, starty=0, width=100, height=200):
     """Cutout a subimage ot of a bigger image
 
     :param image2d: the original image
@@ -311,126 +317,129 @@ def cutout_subimage(image2d,
     :rtype: NumPy.Array
     """
 
-    image2d = image2d[starty:starty + height, startx:startx + width]
+    image2d = image2d[starty : starty + height, startx : startx + width]
 
     return image2d
 
 
-def segment_nuclei_cellpose2d(image2d, model,
-                              channels=[0, 0],
-                              rescale=None,
-                              diameter=None,
-                              verbose=False,
-                              cellprob_threshold=0.5,
-                              autotune=False):
-    """Segment nucleus or cytosol using a cellpose model in 2D
+# def segment_nuclei_cellpose2d(image2d, model,
+#                               channels=[0, 0],
+#                               rescale=None,
+#                               diameter=None,
+#                               verbose=False,
+#                               cellprob_threshold=0.5,
+#                               autotune=False):
+#     """Segment nucleus or cytosol using a cellpose model in 2D
 
-    - define CHANNELS to run segmentation on
-    - grayscale=0, R=1, G=2, B=3
-    - channels = [cytoplasm, nucleus]
-    - if NUCLEUS channel does not exist, set the second channel to 0
-    - IF ALL YOUR IMAGES ARE THE SAME TYPE, you can give a list with 2 elements
-    - channels = [0,0] # IF YOU HAVE GRAYSCALE
-    - channels = [2,3] # IF YOU HAVE G=cytoplasm and B=nucleus
-    - channels = [2,1] # IF YOU HAVE G=cytoplasm and R=nucleus
-
-
-    :param image2d: 2D image
-    :type image2d: NumPy.Array
-    :param model: cellposemodel for segmentation
-    :type model: cellpose model
-    :param channels: channels used for segmentation[description], defaults to [0, 0]
-    :type channels: list, optional
-    :param rescale: if diameter is set to None, and rescale is not None,
-    then rescale is used instead of diameter for resizing image, defaults to None
-    :type rescale: float, optional
-    :param diameter: Estimated diameter of objects. If set to None,
-    then diameter is automatically estimated if size model is loaded, defaults to None
-    :type diameter: float, optional
-    :param verbose: show additional output, defaults to False
-    :type verbose: bool, optional
-    :return: mask - binary mask
-    :rtype: NumPy.Array
-    """
-
-    if not autotune:
-        # Running performance tests to find the best convolution algorithm, this can take a while...
-        # set the environment variable MXNET_CUDNN_AUTOTUNE_DEFAULT to 0 to disable)
-        os.environ['MXNET_CUDNN_AUTOTUNE_DEFAULT'] = '0'
-
-    # define CHANNELS to run segmentation on
-    # grayscale=0, R=1, G=2, B=3
-    # channels = [cytoplasm, nucleus]
-    # if NUCLEUS channel does not exist, set the second channel to 0
-
-    # IF ALL YOUR IMAGES ARE THE SAME TYPE, you can give a list with 2 elements
-    # channels = [0,0] # IF YOU HAVE GRAYSCALE
-    # channels = [2,3] # IF YOU HAVE G=cytoplasm and B=nucleus
-    # channels = [2,1] # IF YOU HAVE G=cytoplasm and R=nucleus
-
-    # start the clock
-    if verbose:
-        start = perf_counter()
-
-    # get the mask for a single image
-    masks, _, _, _ = model.eval([image2d],
-                                channels=channels,
-                                diameter=diameter,
-                                invert=False,
-                                rescale=rescale,
-                                do_3D=False,
-                                net_avg=True,
-                                tile=False,
-                                flow_threshold=0.4,
-                                cellprob_threshold=0.0,
-                                progress=None)
-
-    if verbose:
-        end = perf_counter()
-        st = end - start
-        print('Segmentation Time CellPose:', st)
-
-    return masks[0]
+#     - define CHANNELS to run segmentation on
+#     - grayscale=0, R=1, G=2, B=3
+#     - channels = [cytoplasm, nucleus]
+#     - if NUCLEUS channel does not exist, set the second channel to 0
+#     - IF ALL YOUR IMAGES ARE THE SAME TYPE, you can give a list with 2 elements
+#     - channels = [0,0] # IF YOU HAVE GRAYSCALE
+#     - channels = [2,3] # IF YOU HAVE G=cytoplasm and B=nucleus
+#     - channels = [2,1] # IF YOU HAVE G=cytoplasm and R=nucleus
 
 
-def segment_objects_cellpose2d(image2d: np.ndarray,
-                               cp_model: models.CellposeModel,
-                               channels: List[int] = [0, 0],
-                               rescale: bool = None,
-                               diameter: int = 17,
-                               min_size: int = 15,
-                               tile: bool = False,
-                               tile_overlap: float = 0.1,
-                               cellprob_threshold: float = 0.0):
+#     :param image2d: 2D image
+#     :type image2d: NumPy.Array
+#     :param model: cellposemodel for segmentation
+#     :type model: cellpose model
+#     :param channels: channels used for segmentation[description], defaults to [0, 0]
+#     :type channels: list, optional
+#     :param rescale: if diameter is set to None, and rescale is not None,
+#     then rescale is used instead of diameter for resizing image, defaults to None
+#     :type rescale: float, optional
+#     :param diameter: Estimated diameter of objects. If set to None,
+#     then diameter is automatically estimated if size model is loaded, defaults to None
+#     :type diameter: float, optional
+#     :param verbose: show additional output, defaults to False
+#     :type verbose: bool, optional
+#     :return: mask - binary mask
+#     :rtype: NumPy.Array
+#     """
 
-    # get the mask for a single image
-    masks, _, _ = cp_model.eval([image2d],
-                                batch_size=8,
-                                channels=channels,
-                                diameter=diameter,
-                                min_size=min_size,
-                                normalize=True,
-                                invert=False,
-                                rescale=rescale,
-                                do_3D=False,
-                                net_avg=True,
-                                tile=tile,
-                                tile_overlap=tile_overlap,
-                                augment=False,
-                                flow_threshold=0.4,
-                                cellprob_threshold=cellprob_threshold,
-                                progress=None)
+#     if not autotune:
+#         # Running performance tests to find the best convolution algorithm, this can take a while...
+#         # set the environment variable MXNET_CUDNN_AUTOTUNE_DEFAULT to 0 to disable)
+#         os.environ['MXNET_CUDNN_AUTOTUNE_DEFAULT'] = '0'
 
-    return masks[0]
+#     # define CHANNELS to run segmentation on
+#     # grayscale=0, R=1, G=2, B=3
+#     # channels = [cytoplasm, nucleus]
+#     # if NUCLEUS channel does not exist, set the second channel to 0
+
+#     # IF ALL YOUR IMAGES ARE THE SAME TYPE, you can give a list with 2 elements
+#     # channels = [0,0] # IF YOU HAVE GRAYSCALE
+#     # channels = [2,3] # IF YOU HAVE G=cytoplasm and B=nucleus
+#     # channels = [2,1] # IF YOU HAVE G=cytoplasm and R=nucleus
+
+#     # start the clock
+#     if verbose:
+#         start = perf_counter()
+
+#     # get the mask for a single image
+#     masks, _, _, _ = model.eval([image2d],
+#                                 channels=channels,
+#                                 diameter=diameter,
+#                                 invert=False,
+#                                 rescale=rescale,
+#                                 do_3D=False,
+#                                 net_avg=True,
+#                                 tile=False,
+#                                 flow_threshold=0.4,
+#                                 cellprob_threshold=0.0,
+#                                 progress=None)
+
+#     if verbose:
+#         end = perf_counter()
+#         st = end - start
+#         print('Segmentation Time CellPose:', st)
+
+#     return masks[0]
 
 
-def segment_nuclei_stardist(image2d, sdmodel,
-                            prob_thresh=0.5,
-                            overlap_thresh=0.3,
-                            norm=True,
-                            norm_pmin=1.0,
-                            norm_pmax=99.8,
-                            norm_clip=False):
+# def segment_objects_cellpose2d(image2d: np.ndarray,
+#                                cp_model: models.CellposeModel,
+#                                channels: List[int] = [0, 0],
+#                                rescale: bool = None,
+#                                diameter: int = 17,
+#                                min_size: int = 15,
+#                                tile: bool = False,
+#                                tile_overlap: float = 0.1,
+#                                cellprob_threshold: float = 0.0):
+
+#     # get the mask for a single image
+#     masks, _, _ = cp_model.eval([image2d],
+#                                 batch_size=8,
+#                                 channels=channels,
+#                                 diameter=diameter,
+#                                 min_size=min_size,
+#                                 normalize=True,
+#                                 invert=False,
+#                                 rescale=rescale,
+#                                 do_3D=False,
+#                                 net_avg=True,
+#                                 tile=tile,
+#                                 tile_overlap=tile_overlap,
+#                                 augment=False,
+#                                 flow_threshold=0.4,
+#                                 cellprob_threshold=cellprob_threshold,
+#                                 progress=None)
+
+#     return masks[0]
+
+
+def segment_nuclei_stardist(
+    image2d,
+    sdmodel,
+    prob_thresh=0.5,
+    overlap_thresh=0.3,
+    norm=True,
+    norm_pmin=1.0,
+    norm_pmax=99.8,
+    norm_clip=False,
+):
     """[summary]
 
     :param image2d: 2d image to be segmented
@@ -458,24 +467,28 @@ def segment_nuclei_stardist(image2d, sdmodel,
     # os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
     # normalize image
-    image2d_norm = normalize(image2d,
-                             pmin=norm_pmin,
-                             pmax=norm_pmax,
-                             axis=None,
-                             clip=norm_clip,
-                             eps=1e-20,
-                             dtype=np.float32)
+    image2d_norm = normalize(
+        image2d,
+        pmin=norm_pmin,
+        pmax=norm_pmax,
+        axis=None,
+        clip=norm_clip,
+        eps=1e-20,
+        dtype=np.float32,
+    )
 
     # predict the instances of th single nuclei
-    mask2d, details = sdmodel.predict_instances(image2d_norm,
-                                                axes=None,
-                                                normalizer=None,
-                                                prob_thresh=0.4,
-                                                nms_thresh=0.3,
-                                                n_tiles=None,
-                                                show_tile_progress=True,
-                                                overlap_label=None,
-                                                verbose=False)
+    mask2d, details = sdmodel.predict_instances(
+        image2d_norm,
+        axes=None,
+        normalizer=None,
+        prob_thresh=0.4,
+        nms_thresh=0.3,
+        n_tiles=None,
+        show_tile_progress=True,
+        overlap_label=None,
+        verbose=False,
+    )
 
     return mask2d
 
@@ -498,38 +511,38 @@ def segment_nuclei_stardist(image2d, sdmodel,
 #     return device
 
 
-def load_cellpose_model(model_type='nuclei',
-                        gpu=True,
-                        net_avg=True):
+# def load_cellpose_model(model_type="nuclei", gpu=True, net_avg=True):
 
-    # load cellpose model for cell nuclei using GPU or CPU
-    print('Loading Cellpose Model ...')
+#     # load cellpose model for cell nuclei using GPU or CPU
+#     print("Loading Cellpose Model ...")
 
-    model = models.Cellpose(gpu=gpu,
-                            model_type=model_type,
-                            net_avg=net_avg,
-                            # torch=True
-                            )
+#     model = models.Cellpose(
+#         gpu=gpu,
+#         model_type=model_type,
+#         net_avg=net_avg,
+#         # torch=True
+#     )
 
-    return model
-
-
-def load_cellpose_modelpath(model_path: List[str],
-                            gpu: bool = True) -> models.CellposeModel:
-
-    # load cellpose models
-    print('Loading Cellpose Models from folder')
-
-    model = models.CellposeModel(gpu=gpu, pretrained_model=model_path)
-
-    return model
+#     return model
 
 
-def load_stardistmodel(modeltype='Versatile (fluorescent nuclei)'):
+# def load_cellpose_modelpath(
+#     model_path: List[str], gpu: bool = True
+# ) -> models.CellposeModel:
+
+#     # load cellpose models
+#     print("Loading Cellpose Models from folder")
+
+#     model = models.CellposeModel(gpu=gpu, pretrained_model=model_path)
+
+#     return model
+
+
+def load_stardistmodel(modeltype="Versatile (fluorescent nuclei)"):
 
     # workaround explained here to avoid errors
     # https://github.com/openai/spinningup/issues/16
-    os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
 
     # define and load the stardist model
     sdmodel = StarDist2D.from_pretrained(modeltype)
@@ -537,17 +550,17 @@ def load_stardistmodel(modeltype='Versatile (fluorescent nuclei)'):
     return sdmodel
 
 
-def stardistmodel_from_folder(modelfolder, mdname='2D_dsb2018'):
+def stardistmodel_from_folder(modelfolder, mdname="2D_dsb2018"):
 
     # workaround explained here to avoid errors
     # https://github.com/openai/spinningup/issues/16
-    os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
     sdmodel = StarDist2D(None, name=mdname, basedir=modelfolder)
 
     return sdmodel
 
 
-def load_tfmodel(modelfolder='model_folder'):
+def load_tfmodel(modelfolder="model_folder"):
 
     start = perf_counter()
     tfmodel = tf.keras.models.load_model(modelfolder)
@@ -555,7 +568,7 @@ def load_tfmodel(modelfolder='model_folder'):
     # Determine input shape required by the model and crop input image
     tile_height, tile_width = tfmodel.signatures["serving_default"].inputs[0].shape[1:3]
     end = perf_counter()
-    print('Time to load TF2 model:', end - start)
+    print("Time to load TF2 model:", end - start)
 
     return tfmodel, tile_height, tile_width
 
@@ -595,10 +608,7 @@ def segment_zentf(image2d, model, classlabel=1):
     return binary
 
 
-def segment_zentf_tiling(image2d, model,
-                         tilesize=1024,
-                         classlabel=1,
-                         overlap_factor=1):
+def segment_zentf_tiling(image2d, model, tilesize=1024, classlabel=1, overlap_factor=1):
     """Segment a singe [X, Y] 2D image using a pretrained segmentation
     model from the ZEN. The out will be a binary mask from the prediction
     of ZEN czmodel which is a TF.SavedModel with metainformation.
@@ -624,14 +634,17 @@ def segment_zentf_tiling(image2d, model,
     """
 
     # create tile image using MightMosaic
-    image2d_tiled = MightyMosaic.from_array(image2d, (tilesize, tilesize),
-                                            overlap_factor=overlap_factor,
-                                            fill_mode='reflect')
+    image2d_tiled = MightyMosaic.from_array(
+        image2d,
+        (tilesize, tilesize),
+        overlap_factor=overlap_factor,
+        fill_mode="reflect",
+    )
 
-    print('image2d_tiled shape : ', image2d_tiled.shape)
+    print("image2d_tiled shape : ", image2d_tiled.shape)
     # get number of tiles
     num_tiles = image2d_tiled.shape[0] * image2d_tiled.shape[1]
-    print('Number of Tiles: ', num_tiles)
+    print("Number of Tiles: ", num_tiles)
 
     # create array for the binary results
     binary_tiled = image2d_tiled
@@ -641,7 +654,9 @@ def segment_zentf_tiling(image2d, model,
         for n2 in range(image2d_tiled.shape[1]):
 
             ct += 1
-            print('Processing Tile : ', ct, ' Size : ', image2d_tiled[n1, n2, :, :].shape)
+            print(
+                "Processing Tile : ", ct, " Size : ", image2d_tiled[n1, n2, :, :].shape
+            )
 
             # extract a tile
             tile = image2d_tiled[n1, n2, :, :]
@@ -681,10 +696,16 @@ def add_padding(image2d, input_height=1024, input_width=1024):
     padding_height = input_height - image2d.shape[0]
     padding_width = input_width - image2d.shape[1]
     padding_left, padding_right = padding_width // 2, padding_width - padding_width // 2
-    padding_top, padding_bottom = padding_height // 2, padding_height - padding_height // 2
+    padding_top, padding_bottom = (
+        padding_height // 2,
+        padding_height - padding_height // 2,
+    )
 
-    image2d_padded = np.pad(image2d, ((padding_top, padding_bottom),
-                            (padding_left, padding_right), (0, 0)), 'reflect')
+    image2d_padded = np.pad(
+        image2d,
+        ((padding_top, padding_bottom), (padding_left, padding_right), (0, 0)),
+        "reflect",
+    )
 
     if not isrgb:
         image2d_padded = np.squeeze(image2d_padded, axis=2)
@@ -692,10 +713,7 @@ def add_padding(image2d, input_height=1024, input_width=1024):
     return image2d_padded, (padding_top, padding_bottom, padding_left, padding_right)
 
 
-def subtract_background(image,
-                        elem='disk',
-                        radius=50,
-                        light_bg=False):
+def subtract_background(image, elem="disk", radius=50, light_bg=False):
     """Background substraction using structure element.
     Slightly adapted from: https://forum.image.sc/t/background-subtraction-in-scikit-image/39118/4
 
@@ -711,9 +729,9 @@ def subtract_background(image,
     :rtype: NumPy.Array
     """
     # use 'ball' here to get a slightly smoother result at the cost of increased computing time
-    if elem == 'disk':
+    if elem == "disk":
         str_el = disk(radius)
-    if elem == 'ball':
+    if elem == "ball":
         str_el = ball(radius)
 
     if light_bg:

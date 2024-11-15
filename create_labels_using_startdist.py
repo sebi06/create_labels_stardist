@@ -10,7 +10,7 @@
 #################################################################
 
 from pylibCZIrw import czi as pyczi
-from czitools import pylibczirw_metadata as czimd
+from czitools.metadata_tools import czi_metadata as czimd
 from stardist.models import StarDist2D
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,36 +19,48 @@ from skimage.transform import resize
 from aicsimageio.writers import ome_tiff_writer as otw
 import os
 from tqdm import tqdm
-from typing import List, Dict, Tuple, Optional, Type, Any, Union
+from typing import List, Dict, Tuple, Optional, Type, Any, Union, NamedTuple
 from cztile.fixed_total_area_strategy import AlmostEqualBorderFixedTotalAreaStrategy2D
-import segmentation_tools as sgt
+import segtools as sgt
 import segmentation_stardist as sg_sd
+from aicsimageio.types import PhysicalPixelSizes
 
 
-def process_labels(labels: np.ndarray,
-                   seg_labeltype: str = "semantic",
-                   do_area_filter: bool = True,
-                   minsize: int = 200,
-                   maxsize: int = 1000000,
-                   do_erode: bool = False,
-                   erode_numit: int = 1,
-                   do_clear_borders: bool = False,
-                   verbose: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+def process_labels(
+    labels: np.ndarray,
+    seg_labeltype: str = "semantic",
+    do_area_filter: bool = True,
+    minsize: int = 200,
+    maxsize: int = 1000000,
+    do_erode: bool = False,
+    erode_numit: int = 1,
+    do_clear_borders: bool = False,
+    verbose: bool = False,
+) -> Tuple[np.ndarray, np.ndarray]:
 
     # find boundaries
-    bounds = segmentation.find_boundaries(labels, connectivity=2, mode="thicker", background=0)
+    bounds = segmentation.find_boundaries(
+        labels, connectivity=2, mode="thicker", background=0
+    )
 
     # set all boundary pixel inside label image = Zero by inverting the boundary image
     new_labels = labels * ~bounds
 
     if verbose:
-        show_plot(labels, ~bounds, new_labels, title1="labels", title2="~bounds", title3="new_labels")
+        show_plot(
+            labels,
+            ~bounds,
+            new_labels,
+            title1="labels",
+            title2="~bounds",
+            title3="new_labels",
+        )
 
     if do_area_filter:
         # filter labels by size
-        new_labels, num_labels = sgt.area_filter(new_labels,
-                                                 area_min=minsize,
-                                                 area_max=maxsize)
+        new_labels, num_labels = sgt.area_filter(
+            new_labels, area_min=minsize, area_max=maxsize
+        )
         print("Area Filter - Objects:", num_labels)
 
     if do_erode:
@@ -62,7 +74,14 @@ def process_labels(labels: np.ndarray,
         print("Clear Borders - Objects:", num_labels)
 
         if verbose:
-            show_plot(labels, ~bounds, new_labels, title1="labels", title2="~bounds", title3="new_labels")
+            show_plot(
+                labels,
+                ~bounds,
+                new_labels,
+                title1="labels",
+                title2="~bounds",
+                title3="new_labels",
+            )
 
     if seg_labeltype == "semantic":
 
@@ -77,7 +96,14 @@ def process_labels(labels: np.ndarray,
         background = (background * 255).astype(np.uint8)
 
         if verbose:
-            show_plot(labels, sem_labels, background, title1="labels", title2="sem_labels", title3="background")
+            show_plot(
+                labels,
+                sem_labels,
+                background,
+                title1="labels",
+                title2="sem_labels",
+                title3="background",
+            )
 
         return sem_labels, background
 
@@ -88,16 +114,39 @@ def process_labels(labels: np.ndarray,
         background = background.astype(np.uint8) * 255
 
         if verbose:
-            show_plot(labels, new_labels, background, title1="labels", title2="inst_labels", title3="background")
+            show_plot(
+                labels,
+                new_labels,
+                background,
+                title1="labels",
+                title2="inst_labels",
+                title3="background",
+            )
 
         return new_labels, background
 
 
-def show_plot(img1: np.ndarray, img2: np.ndarray, img3: np.ndarray,
-              title1: str = "img1",
-              title2: str = "img2",
-              title3: str = "img3",) -> None:
+def show_plot(
+    img1: np.ndarray,
+    img2: np.ndarray,
+    img3: np.ndarray,
+    title1: str = "img1",
+    title2: str = "img2",
+    title3: str = "img3",
+) -> None:
+    """
+    Display three images side by side with their respective titles.
 
+    Parameters:
+        img1 (np.ndarray): The first image to display.
+        img2 (np.ndarray): The second image to display.
+        img3 (np.ndarray): The third image to display.
+        title1 (str, optional): Title for the first image. Defaults to "img1".
+        title2 (str, optional): Title for the second image. Defaults to "img2".
+        title3 (str, optional): Title for the third image. Defaults to "img3".
+    Returns:
+        None
+    """
     # show the results
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(12, 6))
 
@@ -116,47 +165,81 @@ def show_plot(img1: np.ndarray, img2: np.ndarray, img3: np.ndarray,
     plt.show()
 
 
-def save_OMETIFF(img_FL: np.ndarray,
-                 img_TL: np.ndarray,
-                 new_labels: np.ndarray,
-                 background: np.ndarray,
-                 savepath_FL: str = "DAPI.ome.tiff",
-                 savepath_TL: str = "PGC.ome.tiff",
-                 savepath_NUC: str = "PGC_nuc.ome.tiff",
-                 savepath_BGRD: str = "PGC_background.ome.tiff",
-                 pixels_physical_sizes: List[float] = [1.0, 1.0, 1.0],
-                 channel_names: Dict[str, str] = {"FL": "FL", "TL": "TL", "NUC": "NUC", "BGRD": "BGRD"}) -> None:
+def save_OMETIFF(
+    img_FL: np.ndarray,
+    img_TL: np.ndarray,
+    new_labels: np.ndarray,
+    background: np.ndarray,
+    scale_xyz: NamedTuple,
+    savepath_FL: str = "DAPI.ome.tiff",
+    savepath_TL: str = "PGC.ome.tiff",
+    savepath_NUC: str = "PGC_nuc.ome.tiff",
+    savepath_BGRD: str = "PGC_background.ome.tiff",
+    channel_names: Dict[str, str] = {
+        "FL": "FL",
+        "TL": "TL",
+        "NUC": "NUC",
+        "BGRD": "BGRD",
+    },
+) -> None:
+    """
+    Save multiple images and labels as OME-TIFF files with metadata.
+    Parameters:
+        img_FL (np.ndarray): Fluorescence image array.
+        img_TL (np.ndarray): Transmitted light image array.
+        new_labels (np.ndarray): Array containing new labels.
+        background (np.ndarray): Background image array.
+        scale_xyz (NamedTuple): Physical pixel sizes in x, y, and z dimensions.
+        savepath_FL (str, optional): File path to save the fluorescence image. Defaults to "DAPI.ome.tiff".
+        savepath_TL (str, optional): File path to save the transmitted light image. Defaults to "PGC.ome.tiff".
+        savepath_NUC (str, optional): File path to save the labels. Defaults to "PGC_nuc.ome.tiff".
+        savepath_BGRD (str, optional): File path to save the background image. Defaults to "PGC_background.ome.tiff".
+        channel_names (Dict[str, str], optional): Dictionary mapping image types to channel names. Defaults to {"FL": "FL", "TL": "TL", "NUC": "NUC", "BGRD": "BGRD"}.
+    Returns:
+        None
+    """
+    # write the array as an OME-TIFF incl. the metadata for the labels
+    otw.OmeTiffWriter.save(
+        img_FL,
+        savepath_FL,
+        channel_names=channel_names["FL"],
+        physical_pixel_sizes=scale_xyz,
+        dim_order="YX",
+    )
 
     # write the array as an OME-TIFF incl. the metadata for the labels
-    otw.OmeTiffWriter.save(img_FL, savepath_FL,
-                           channel_names=channel_names["FL"],
-                           pixels_physical_sizes=pixels_physical_sizes,
-                           dim_order="YX")
-
-    # write the array as an OME-TIFF incl. the metadata for the labels
-    otw.OmeTiffWriter.save(img_TL, savepath_TL,
-                           channel_names=channel_names["TL"],
-                           pixels_physical_sizes=pixels_physical_sizes,
-                           dim_order="YX")
+    otw.OmeTiffWriter.save(
+        img_TL,
+        savepath_TL,
+        channel_names=channel_names["TL"],
+        physical_pixel_sizes=scale_xyz,
+        dim_order="YX",
+    )
 
     # save the label
-    otw.OmeTiffWriter.save(new_labels, savepath_NUC,
-                           channel_names=channel_names["NUC"],
-                           pixels_physical_sizes=pixels_physical_sizes,
-                           dim_order="YX")
+    otw.OmeTiffWriter.save(
+        new_labels,
+        savepath_NUC,
+        channel_names=channel_names["NUC"],
+        physical_pixel_sizes=scale_xyz,
+        dim_order="YX",
+    )
 
     # save the background
-    otw.OmeTiffWriter.save(background, savepath_BGRD,
-                           channel_names=["BGRD"],
-                           pixels_physical_sizes=pixels_physical_sizes,
-                           dim_order="YX")
+    otw.OmeTiffWriter.save(
+        background,
+        savepath_BGRD,
+        channel_names=["BGRD"],
+        physical_pixel_sizes=scale_xyz,
+        dim_order="YX",
+    )
 
 
 ##########################################################################
 
 basefolder = r"data"
-#basefolder = r"D:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_20XNA095_stitched"
-#basefolder = r"d:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_CD7_20XNA0.7\single"
+# basefolder = r"D:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_20XNA095_stitched"
+# basefolder = r"d:\ImageData\Labeled_Datasets\DAPI_PGC\DAPI_PGC_CD7_20XNA0.7\single"
 dir_FL = os.path.join(basefolder, "fluo")
 dir_LABEL = os.path.join(basefolder, "label")
 dir_TL = os.path.join(basefolder, "trans")
@@ -201,7 +284,7 @@ do_clear_borders = False
 
 # define desired label output type
 seg_labeltype = "semantic"
-#seg_labeltype = "instance"
+# seg_labeltype = "instance"
 
 # CZI parameters
 ext = ".czi"
@@ -209,7 +292,7 @@ ch_id_FL = 0  # channel index for the stained cell nuclei
 ch_id_TL = 1  # channel index for the PGC or TL or ...
 
 # for testing - show some plots
-verbose = True
+verbose = False
 
 # iterating over all files
 for file in os.listdir(basefolder):
@@ -223,7 +306,7 @@ for file in os.listdir(basefolder):
 
         # get the scaling from the CZI
         cziscale = czimd.CziScaling(os.path.join(basefolder, cziname))
-        pixels_physical_sizes = [1, cziscale.X, cziscale.Y]
+        scale_xyz = PhysicalPixelSizes(Z=1.0, Y=cziscale.Y, X=cziscale.X)
 
         scale_forward = target_scaleXY / cziscale.X
         new_shapeXY = int(np.round(tilesize_processing * scale_forward, 0))
@@ -236,9 +319,11 @@ for file in os.listdir(basefolder):
                 tilecounter = 0
 
                 # create a "tile" by specifying the desired tile dimension and minimum required overlap
-                tiler = AlmostEqualBorderFixedTotalAreaStrategy2D(total_tile_width=tilesize_processing,
-                                                                  total_tile_height=tilesize_processing,
-                                                                  min_border_width=min_borderwith_processing)
+                tiler = AlmostEqualBorderFixedTotalAreaStrategy2D(
+                    total_tile_width=tilesize_processing,
+                    total_tile_height=tilesize_processing,
+                    min_border_width=min_borderwith_processing,
+                )
 
                 # get the size of the bounding rectangle for the scene
                 tiles = tiler.tile_rectangle(czidoc_r.scenes_bounding_rectangle[0])
@@ -251,122 +336,180 @@ for file in os.listdir(basefolder):
                 for tile in tqdm(tiles):
 
                     # read a specific tile from the CZI using the roi parameter
-                    tile2d_FL = czidoc_r.read(plane={"C": ch_id_FL}, roi=(tile.roi.x, tile.roi.y, tile.roi.w, tile.roi.h))[..., 0]
-                    tile2d_TL = czidoc_r.read(plane={"C": ch_id_TL}, roi=(tile.roi.x, tile.roi.y, tile.roi.w, tile.roi.h))[..., 0]
+                    tile2d_FL = czidoc_r.read(
+                        plane={"C": ch_id_FL},
+                        roi=(tile.roi.x, tile.roi.y, tile.roi.w, tile.roi.h),
+                    )[..., 0]
+                    tile2d_TL = czidoc_r.read(
+                        plane={"C": ch_id_TL},
+                        roi=(tile.roi.x, tile.roi.y, tile.roi.w, tile.roi.h),
+                    )[..., 0]
 
                     if rescale_image:
                         # scale the FL image to 0.5 micron per pixel (more or less)
-                        tile2d_FL_scaled = resize(tile2d_FL, (new_shapeXY, new_shapeXY), preserve_range=True, anti_aliasing=True)
+                        tile2d_FL_scaled = resize(
+                            tile2d_FL,
+                            (new_shapeXY, new_shapeXY),
+                            preserve_range=True,
+                            anti_aliasing=True,
+                        )
 
                         # get the prediction for the current tile
                         # labels, polys = model.predict_instances(normalize(tile2d_FL))  # , n_tiles=(2, 2))  # int32
-                        labels_scaled = sg_sd.segment_nuclei_stardist(tile2d_FL_scaled, model,
-                                                                      prob_thresh=stardist_prob_thresh,
-                                                                      overlap_thresh=stardist_overlap_thresh,
-                                                                      overlap_label=stardist_overlap_label,
-                                                                      n_tiles=n_tiles,
-                                                                      norm_pmin=stardist_norm_pmin,
-                                                                      norm_pmax=stardist_norm_pmax,
-                                                                      norm_clip=stardist_norm_clip)
+                        labels_scaled = sg_sd.segment_nuclei_stardist(
+                            tile2d_FL_scaled,
+                            model,
+                            prob_thresh=stardist_prob_thresh,
+                            overlap_thresh=stardist_overlap_thresh,
+                            overlap_label=stardist_overlap_label,
+                            n_tiles=n_tiles,
+                            norm_pmin=stardist_norm_pmin,
+                            norm_pmax=stardist_norm_pmax,
+                            norm_clip=stardist_norm_clip,
+                        )
 
                         # scale the label image back to the original size preserving the label values
-                        labels = resize(labels_scaled, (tilesize_processing, tilesize_processing), anti_aliasing=False, preserve_range=True).astype(np.uint32)
+                        labels = resize(
+                            labels_scaled,
+                            (tilesize_processing, tilesize_processing),
+                            anti_aliasing=False,
+                            preserve_range=True,
+                        ).astype(np.uint32)
 
                     if not rescale_image:
 
                         # get the prediction for the current tile
                         # labels, polys = model.predict_instances(normalize(tile2d_FL))  # , n_tiles=(2, 2))  # int32
-                        labels = sg_sd.segment_nuclei_stardist(tile2d_FL, model,
-                                                               prob_thresh=stardist_prob_thresh,
-                                                               overlap_thresh=stardist_overlap_thresh,
-                                                               overlap_label=stardist_overlap_label,
-                                                               n_tiles=n_tiles,
-                                                               norm_pmin=stardist_norm_pmin,
-                                                               norm_pmax=stardist_norm_pmax,
-                                                               norm_clip=stardist_norm_clip)
+                        labels = sg_sd.segment_nuclei_stardist(
+                            tile2d_FL,
+                            model,
+                            prob_thresh=stardist_prob_thresh,
+                            overlap_thresh=stardist_overlap_thresh,
+                            overlap_label=stardist_overlap_label,
+                            n_tiles=n_tiles,
+                            norm_pmin=stardist_norm_pmin,
+                            norm_pmax=stardist_norm_pmax,
+                            norm_clip=stardist_norm_clip,
+                        )
 
                     # process the labels
-                    labels, background = process_labels(labels,
-                                                        seg_labeltype=seg_labeltype,
-                                                        do_area_filter=do_area_filter,
-                                                        minsize=minsize_nuc,
-                                                        maxsize=maxsize_nuc,
-                                                        do_erode=do_erode,
-                                                        erode_numit=erode_numit,
-                                                        do_clear_borders=do_clear_borders,
-                                                        verbose=verbose)
+                    labels, background = process_labels(
+                        labels,
+                        seg_labeltype=seg_labeltype,
+                        do_area_filter=do_area_filter,
+                        minsize=minsize_nuc,
+                        maxsize=maxsize_nuc,
+                        do_erode=do_erode,
+                        erode_numit=erode_numit,
+                        do_clear_borders=do_clear_borders,
+                        verbose=verbose,
+                    )
 
                     # save the original FL channel as OME-TIFF
-                    savepath_FL = os.path.join(dir_FL, cziname_NUC + "_t" + str(tilecounter) + suffix_orig)
+                    savepath_FL = os.path.join(
+                        dir_FL, cziname_NUC + "_t" + str(tilecounter) + suffix_orig
+                    )
 
                     # save the original TL (PGC etc. ) channel as OME_TIFF
-                    savepath_TL = os.path.join(dir_TL, cziname_TL + "_t" + str(tilecounter) + suffix_orig)
+                    savepath_TL = os.path.join(
+                        dir_TL, cziname_TL + "_t" + str(tilecounter) + suffix_orig
+                    )
 
                     # save the labels for the nucleus and the background as OME-TIFF
-                    savepath_BGRD = os.path.join(dir_LABEL, cziname_TL + "_t" + str(tilecounter) + suffix_BGRD)
-                    savepath_NUC = os.path.join(dir_LABEL, cziname_TL + "_t" + str(tilecounter) + suffix_NUC)
+                    savepath_BGRD = os.path.join(
+                        dir_LABEL, cziname_TL + "_t" + str(tilecounter) + suffix_BGRD
+                    )
+                    savepath_NUC = os.path.join(
+                        dir_LABEL, cziname_TL + "_t" + str(tilecounter) + suffix_NUC
+                    )
 
                     # save the OME-TIFFs
-                    save_OMETIFF(tile2d_FL, tile2d_TL, labels, background,
-                                 savepath_FL=savepath_FL,
-                                 savepath_TL=savepath_TL,
-                                 savepath_NUC=savepath_NUC,
-                                 savepath_BGRD=savepath_BGRD,
-                                 pixels_physical_sizes=pixels_physical_sizes)
+                    save_OMETIFF(
+                        tile2d_FL,
+                        tile2d_TL,
+                        labels,
+                        background,
+                        scale_xyz,
+                        savepath_FL=savepath_FL,
+                        savepath_TL=savepath_TL,
+                        savepath_NUC=savepath_NUC,
+                        savepath_BGRD=savepath_BGRD,
+                        # physical_pixel_sizes=physical_pixel_sizes,
+                    )
 
-                    print("Saved images & labels for:", cziname_NUC, "tile:", tilecounter)
+                    print(
+                        "Saved images & labels for:", cziname_NUC, "tile:", tilecounter
+                    )
 
                     tilecounter += 1
 
             if not use_tiles:
 
-                # read a specific tile from the CZI using the roi parameter
+                # read data from the CZI using the roi parameter
                 tile2d_FL = czidoc_r.read(plane={"C": ch_id_FL})[..., 0]
                 tile2d_TL = czidoc_r.read(plane={"C": ch_id_TL})[..., 0]
 
                 if rescale_image:
                     # scale the FL image to 0.5 micron per pixel (more or less)
-                    tile2d_FL_scaled = resize(tile2d_FL, (new_shapeXY, new_shapeXY), preserve_range=True, anti_aliasing=True)
+                    tile2d_FL_scaled = resize(
+                        tile2d_FL,
+                        (new_shapeXY, new_shapeXY),
+                        preserve_range=True,
+                        anti_aliasing=True,
+                    )
 
                     # get the prediction for the current tile
                     # labels, polys = model.predict_instances(normalize(tile2d_FL))  # , n_tiles=(2, 2))  # int32
-                    labels_scaled = sg_sd.segment_nuclei_stardist(tile2d_FL_scaled, model,
-                                                                  prob_thresh=stardist_prob_thresh,
-                                                                  overlap_thresh=stardist_overlap_thresh,
-                                                                  overlap_label=stardist_overlap_label,
-                                                                  n_tiles=n_tiles,
-                                                                  norm_pmin=stardist_norm_pmin,
-                                                                  norm_pmax=stardist_norm_pmax,
-                                                                  norm_clip=stardist_norm_clip)
+                    labels_scaled = sg_sd.segment_nuclei_stardist(
+                        tile2d_FL_scaled,
+                        model,
+                        prob_thresh=stardist_prob_thresh,
+                        overlap_thresh=stardist_overlap_thresh,
+                        overlap_label=stardist_overlap_label,
+                        n_tiles=n_tiles,
+                        norm_pmin=stardist_norm_pmin,
+                        norm_pmax=stardist_norm_pmax,
+                        norm_clip=stardist_norm_clip,
+                    )
 
                     # scale the label image back to the original size preserving the label values
-                    labels = resize(labels_scaled, (tilesize_processing, tilesize_processing), anti_aliasing=False, preserve_range=True).astype(np.uint32)
+                    labels = resize(
+                        labels_scaled,
+                        (tilesize_processing, tilesize_processing),
+                        anti_aliasing=False,
+                        preserve_range=True,
+                    ).astype(np.uint32)
 
                 if not rescale_image:
 
                     # get the prediction for the current tile
                     # labels, polys = model.predict_instances(normalize(tile2d_FL))  # , n_tiles=(2, 2))  # int32
-                    labels = sg_sd.segment_nuclei_stardist(tile2d_FL, model,
-                                                           prob_thresh=stardist_prob_thresh,
-                                                           overlap_thresh=stardist_overlap_thresh,
-                                                           overlap_label=stardist_overlap_label,
-                                                           n_tiles=n_tiles,
-                                                           norm_pmin=stardist_norm_pmin,
-                                                           norm_pmax=stardist_norm_pmax,
-                                                           norm_clip=stardist_norm_clip)
+                    labels = sg_sd.segment_nuclei_stardist(
+                        tile2d_FL,
+                        model,
+                        prob_thresh=stardist_prob_thresh,
+                        overlap_thresh=stardist_overlap_thresh,
+                        overlap_label=stardist_overlap_label,
+                        n_tiles=n_tiles,
+                        norm_pmin=stardist_norm_pmin,
+                        norm_pmax=stardist_norm_pmax,
+                        norm_clip=stardist_norm_clip,
+                    )
 
                     print("StarDist - OBjects:", labels.max())
 
                 # process the labels
-                labels, background = process_labels(labels,
-                                                    seg_labeltype=seg_labeltype,
-                                                    do_area_filter=do_area_filter,
-                                                    minsize=minsize_nuc,
-                                                    maxsize=maxsize_nuc,
-                                                    do_erode=do_erode,
-                                                    erode_numit=erode_numit,
-                                                    do_clear_borders=do_clear_borders,
-                                                    verbose=verbose)
+                labels, background = process_labels(
+                    labels,
+                    seg_labeltype=seg_labeltype,
+                    do_area_filter=do_area_filter,
+                    minsize=minsize_nuc,
+                    maxsize=maxsize_nuc,
+                    do_erode=do_erode,
+                    erode_numit=erode_numit,
+                    do_clear_borders=do_clear_borders,
+                    verbose=verbose,
+                )
 
                 print("Saving images & labels for:", cziname_NUC)
 
@@ -381,12 +524,18 @@ for file in os.listdir(basefolder):
                 savepath_NUC = os.path.join(dir_LABEL, cziname_TL + suffix_NUC)
 
                 # save the OME-TIFFs
-                save_OMETIFF(tile2d_FL, tile2d_TL, labels, background,
-                             savepath_FL=savepath_FL,
-                             savepath_TL=savepath_TL,
-                             savepath_NUC=savepath_NUC,
-                             savepath_BGRD=savepath_BGRD,
-                             pixels_physical_sizes=pixels_physical_sizes)
+                save_OMETIFF(
+                    tile2d_FL,
+                    tile2d_TL,
+                    labels,
+                    background,
+                    scale_xyz,
+                    savepath_FL=savepath_FL,
+                    savepath_TL=savepath_TL,
+                    savepath_NUC=savepath_NUC,
+                    savepath_BGRD=savepath_BGRD,
+                    # physical_pixel_sizes=physical_pixel_sizes,
+                )
 
                 print("Saving finished for:", cziname_NUC)
 
