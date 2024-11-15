@@ -54,22 +54,23 @@ def segment_nuclei_stardist(
 ):
     """
     Segment nuclei in a 2D image using the StarDist2D model.
+
     Parameters:
-    img2d (np.ndarray): 2D image array to be segmented.
-    sdmodel (StarDist2D): Pre-trained StarDist2D model for segmentation.
-    axes (str): Axes of the input image, default is "YX".
-    prob_thresh (float): Probability threshold for object prediction, default is 0.5.
-    overlap_thresh (float): Overlap threshold for non-maximum suppression, default is 0.3.
-    overlap_label (Union[int, None]): Label for overlapping regions, default is None.
-    blocksize (int): Size of the blocks for processing large images, default is 1024.
-    min_overlap (int): Minimum overlap size for block processing, default is 128.
-    n_tiles (Union[int, None]): Number of tiles for tiling large images, default is None.
-    norm_pmin (float): Minimum percentile for normalization, default is 1.0.
-    norm_pmax (float): Maximum percentile for normalization, default is 99.8.
-    norm_clip (bool): Whether to clip values during normalization, default is False.
-    local_normalize (bool): Whether to apply local normalization, default is True.
+        img2d (np.ndarray): 2D image array to be segmented.
+        sdmodel (StarDist2D): Pre-trained StarDist2D model for segmentation.
+        axes (str): Axes of the input image, default is "YX".
+        prob_thresh (float): Probability threshold for object prediction, default is 0.5.
+        overlap_thresh (float): Overlap threshold for non-maximum suppression, default is 0.3.
+        overlap_label (Union[int, None]): Label for overlapping regions, default is None.
+        blocksize (int): Size of the blocks for processing large images, default is 1024.
+        min_overlap (int): Minimum overlap size for block processing, default is 128.
+        n_tiles (Union[int, None]): Number of tiles for tiling large images, default is None.
+        norm_pmin (float): Minimum percentile for normalization, default is 1.0.
+        norm_pmax (float): Maximum percentile for normalization, default is 99.8.
+        norm_clip (bool): Whether to clip values during normalization, default is False.
+        local_normalize (bool): Whether to apply local normalization, default is True.
     Returns:
-    np.ndarray: Segmented mask of the input image.
+        np.ndarray: Segmented mask of the input image.
     """
     if local_normalize:
         # normalize whole 2d image
